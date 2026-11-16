@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import get_settings
 from .nlp.pipeline import Analyzer
-from .routers import analyze, export, health
+from .routers import analyze, export, health, pdf_import
 from .version import __version__
 
 FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
@@ -42,6 +42,7 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(analyze.router)
 app.include_router(export.router)
+app.include_router(pdf_import.router)
 
 if FRONTEND_DIR.exists():
     app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

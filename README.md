@@ -11,6 +11,7 @@ An intelligent grammar and writing assistant with a local-first NLP pipeline and
 - Inline highlights, severity/type filters, apply/ignore actions, and adjustable minimum severity
 - One-click **Fix all** for spelling, grammar, and punctuation suggestions
 - Download the current text as a paginated PDF from the editor or the bookmarklet
+- Upload a text-based PDF and pull its selectable text into the editor for checking
 - Bookmarklet panel that checks selected text on any page and can hand off to the full editor
 - Offset-safe handling of Unicode, including emoji, across chunking and LanguageTool UTF-16 offsets
 
@@ -41,7 +42,7 @@ Key modules:
 | `backend/app/nlp/rules.py` | spaCy POS/dependency rules and regex punctuation checks |
 | `backend/app/nlp/readability.py` | textstat metrics and style ratios |
 | `backend/app/nlp/pipeline.py` | Orchestration, issue merging, filtering, timing |
-| `backend/app/pdf.py` | Paginated PDF rendering for text export |
+| `backend/app/pdf.py` | PDF rendering and text extraction for import/export |
 | `backend/app/routers/` | `/health` and `/api/*` endpoints |
 | `frontend/` | Editor, overlay highlights, stats sidebar, issue actions |
 | `bookmarklet/` | Shadow-DOM panel source and build script |
@@ -102,6 +103,8 @@ All settings use the `GA_` prefix and can be set as environment variables or in 
 | `GA_LT_CACHE_SECONDS` | `3600` | Response cache lifetime |
 | `GA_LT_OFFSETS_UTF16` | `true` | Treat LanguageTool offsets as UTF-16 |
 | `GA_MAX_TEXT_CHARS` | `60000` | Maximum accepted document size |
+| `GA_MAX_PDF_BYTES` | `10485760` | Maximum uploaded PDF size in bytes |
+| `GA_MAX_PDF_PAGES` | `100` | Pages read from an uploaded PDF |
 | `GA_CHUNK_CHARS` | `15000` | LanguageTool chunk size |
 | `GA_MAX_SUGGESTIONS` | `4` | Maximum suggestions retained per issue |
 | `GA_CORS_ORIGINS` | `*` | Comma-separated allowed origins |
@@ -161,6 +164,7 @@ Response:
 | `POST` | `/api/dictionary` | Add `{ "word": "fastapi" }` |
 | `DELETE` | `/api/dictionary/{word}` | Remove a word |
 | `POST` | `/api/export/pdf` | Render `{text, title?}` as a downloadable PDF |
+| `POST` | `/api/import/pdf` | Extract text from an uploaded PDF (`multipart/form-data`, field `file`) |
 
 Example:
 
@@ -177,6 +181,7 @@ Invoke-RestMethod -Uri http://127.0.0.1:8000/api/analyze -Method Post -ContentTy
 - Apply a suggestion, jump to the span, or ignore an issue.
 - Use **Fix all** to replace every spelling, grammar, and punctuation issue that has a suggestion in one pass.
 - Use **Download PDF** to save the current editor text as a paginated PDF.
+- Use **Upload PDF** to extract selectable text from a PDF and load it into the editor. Scanned PDFs require OCR first.
 - `?text=...` on the page URL prefills the editor and runs a check; `?api=...` points the frontend at another backend.
 - `Ctrl+Enter` (`Cmd+Enter` on macOS) runs a check immediately.
 
@@ -219,7 +224,7 @@ backend/
   app/
     config.py, schemas.py, main.py, pdf.py
     nlp/            # segmentation, LanguageTool, spelling, rules, readability, pipeline
-    routers/        # health, analyze, export, rewrite, dictionary
+    routers/        # health, analyze, export, pdf_import, rewrite, dictionary
     resources/      # allowlist
   tests/            # pytest suite
   requirements.txt
@@ -240,6 +245,7 @@ docs/
 - Issue merging favors local rules when spans overlap; LanguageTool may report a different suggestion for the same span.
 - No authentication or persistence layer.
 - PDFs embed the bundled Vera font; emoji and non-Latin scripts may render as blank glyphs.
+- PDF import relies on the PDF's text layer. Scanned or image-only PDFs need OCR, and password-protected PDFs are rejected.
 
 ## License
 

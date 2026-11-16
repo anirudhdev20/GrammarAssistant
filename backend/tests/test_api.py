@@ -1,3 +1,10 @@
+from io import BytesIO
+
+from pypdf import PdfWriter
+
+from app.pdf import build_pdf
+
+
 def test_health(client):
     response = client.get("/health")
     assert response.status_code == 200
@@ -79,3 +86,54 @@ def test_pdf_export_handles_unicode(client):
 def test_pdf_export_rejects_blank_text(client):
     assert client.post("/api/export/pdf", json={"text": ""}).status_code == 422
     assert client.post("/api/export/pdf", json={"text": "   "}).status_code == 422
+
+
+def test_pdf_import_extracts_text(client):
+    pdf = build_pdf("I recieve teh mail.\n\nSecond paragraph for import.")
+    response = client.post(
+        "/api/import/pdf",
+        files={"file": ("draft.pdf", pdf, "application/pdf")},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert "recieve teh mail" in body["text"]
+    assert body["filename"] == "draft.pdf"
+    assert body["pages"] == 1
+    assert body["pages_read"] == 1
+    assert body["characters"] == len(body["text"])
+    assert body["truncated"] is False
+
+
+def test_pdf_import_rejects_non_pdf(client):
+    response = client.post(
+        "/api/import/pdf",
+        files={"file": ("notes.txt", b"not a pdf", "text/plain")},
+    )
+    assert response.status_code == 415
+
+
+def test_pdf_import_rejects_blank_pdf(client):
+    writer = PdfWriter()
+    writer.add_blank_page(width=612, height=792)
+    buffer = BytesIO()
+    writer.write(buffer)
+    response = client.post(
+        "/api/import/pdf",
+        files={"file": ("blank.pdf", buffer.getvalue(), "application/pdf")},
+    )
+    assert response.status_code == 422
+    assert "No selectable text" in response.json()["detail"]
+
+
+def test_pdf_import_rejects_password_protected_pdf(client):
+    writer = PdfWriter()
+    writer.add_blank_page(width=612, height=792)
+    writer.encrypt("secret")
+    buffer = BytesIO()
+    writer.write(buffer)
+    response = client.post(
+        "/api/import/pdf",
+        files={"file": ("locked.pdf", buffer.getvalue(), "application/pdf")},
+    )
+    assert response.status_code == 422
+    assert "password-protected" in response.json()["detail"]

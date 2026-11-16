@@ -4,6 +4,7 @@ from pathlib import Path
 from xml.sax.saxutils import escape
 
 import reportlab
+from pypdf import PdfReader
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import LETTER
 from reportlab.lib.styles import ParagraphStyle
@@ -96,3 +97,55 @@ def build_pdf(text: str, title: str = "Grammar Assistant") -> bytes:
 
     document.build(story, onFirstPage=footer, onLaterPages=footer)
     return buffer.getvalue()
+
+
+def _clean_extracted(text: str) -> str:
+    normalized = text.replace("\x00", "").replace("\r\n", "\n").replace("\r", "\n")
+    lines = [line.rstrip() for line in normalized.split("\n")]
+    cleaned = "\n".join(lines)
+    while "\n\n\n" in cleaned:
+        cleaned = cleaned.replace("\n\n\n", "\n\n")
+    return cleaned.strip()
+
+
+def extract_pdf_text(data: bytes, max_pages: int, max_chars: int) -> tuple[str, int, int, bool]:
+    try:
+        reader = PdfReader(BytesIO(data))
+    except Exception as exc:
+        raise ValueError("Could not read this PDF. The file may be damaged.") from exc
+
+    if reader.is_encrypted:
+        try:
+            unlocked = bool(reader.decrypt(""))
+        except Exception:
+            unlocked = False
+        if not unlocked:
+            raise ValueError("This PDF is password-protected. Remove the password and try again.")
+
+    total_pages = len(reader.pages)
+    pages_read = min(total_pages, max_pages)
+    parts: list[str] = []
+    for index in range(pages_read):
+        try:
+            page_text = reader.pages[index].extract_text() or ""
+        except Exception:
+            page_text = ""
+        cleaned = _clean_extracted(page_text)
+        if cleaned:
+            parts.append(cleaned)
+
+    text = "\n\n".join(parts).strip()
+    if not text:
+        raise ValueError("No selectable text found. Scanned PDFs need OCR before uploading.")
+
+    truncated = pages_read < total_pages
+    if len(text) > max_chars:
+        cut = text.rfind("\n", 0, max_chars)
+        if cut < max_chars // 2:
+            cut = text.rfind(" ", 0, max_chars)
+        if cut < max_chars // 2:
+            cut = max_chars
+        text = text[:cut].rstrip()
+        truncated = True
+
+    return text, total_pages, pages_read, truncated

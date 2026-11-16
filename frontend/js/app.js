@@ -1,4 +1,4 @@
-import { analyze, exportPdf } from "./api.js";
+import { analyze, exportPdf, importPdf } from "./api.js";
 
 const MAX_CHARS = 60000;
 const DEBOUNCE_MS = 550;
@@ -24,6 +24,8 @@ const timingEl = document.getElementById("timing");
 const degradedNotice = document.getElementById("degraded-notice");
 const remoteToggle = document.getElementById("remote-toggle");
 const sampleButton = document.getElementById("sample-button");
+const uploadPdfButton = document.getElementById("upload-pdf-button");
+const pdfInput = document.getElementById("pdf-input");
 const checkButton = document.getElementById("check-button");
 const fixAllButton = document.getElementById("fix-all-button");
 const pdfButton = document.getElementById("pdf-button");
@@ -304,6 +306,35 @@ sampleButton.addEventListener("click", () => {
 });
 
 fixAllButton.addEventListener("click", fixAll);
+
+async function uploadPdf(file) {
+  uploadPdfButton.disabled = true;
+  setStatus(`Reading ${file.name}…`, "busy");
+  try {
+    const result = await importPdf(file);
+    editor.value = result.text.slice(0, MAX_CHARS);
+    state.ignored.clear();
+    editor.focus();
+    handleInput(true);
+    const pages =
+      result.pages_read < result.pages
+        ? `first ${result.pages_read} of ${result.pages} pages`
+        : `${result.pages} ${result.pages === 1 ? "page" : "pages"}`;
+    const suffix = result.truncated ? " · truncated to fit" : "";
+    setStatus(`Loaded ${pages} from ${result.filename}${suffix}`);
+  } catch (error) {
+    setStatus(`PDF import failed: ${error.message}`, "error");
+  } finally {
+    uploadPdfButton.disabled = false;
+    pdfInput.value = "";
+  }
+}
+
+uploadPdfButton.addEventListener("click", () => pdfInput.click());
+pdfInput.addEventListener("change", () => {
+  const file = pdfInput.files?.[0];
+  if (file) uploadPdf(file);
+});
 
 async function downloadPdf() {
   const text = editor.value;

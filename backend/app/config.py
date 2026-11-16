@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     lt_enabled: bool = True
     lt_offsets_utf16: bool = True
     max_text_chars: int = 60000
+    max_pdf_bytes: int = 10 * 1024 * 1024
+    max_pdf_pages: int = 100
     chunk_chars: int = 15000
     max_suggestions: int = 4
     cors_origins: str = "*"

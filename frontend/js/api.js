@@ -62,6 +62,26 @@ export async function exportPdf(text, title = "Grammar Assistant") {
   return response.blob();
 }
 
+export async function importPdf(file) {
+  const formData = new FormData();
+  formData.append("file", file, file.name);
+  const response = await fetch(`${apiBase()}/api/import/pdf`, {
+    method: "POST",
+    body: formData,
+  });
+  if (!response.ok) {
+    let detail = `PDF import failed with status ${response.status}`;
+    try {
+      const body = await response.json();
+      if (typeof body.detail === "string") detail = body.detail;
+    } catch {
+      /* keep default message */
+    }
+    throw new Error(detail);
+  }
+  return response.json();
+}
+
 export async function checkHealth() {
   return request("/health");
 }
