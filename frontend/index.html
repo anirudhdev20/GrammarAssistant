@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Grammar Assistant</title>
+  <meta name="description" content="Intelligent grammar and writing assistant powered by spaCy and LanguageTool.">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">Ga</span>
+      <div>
+        <h1>Grammar Assistant</h1>
+        <p>Grammar, spelling, and style checks as you type.</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <label class="switch" for="remote-toggle">
+        <input type="checkbox" id="remote-toggle" checked>
+        <span>Deep check</span>
+      </label>
+      <button type="button" class="ghost" id="sample-button">Load sample</button>
+      <button type="button" class="ghost" id="fix-all-button">Fix all</button>
+      <button type="button" class="ghost" id="pdf-button">Download PDF</button>
+      <button type="button" class="primary" id="check-button">Check now</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="workspace" aria-label="Editor">
+      <div class="editor-shell">
+        <div class="highlight-layer" id="highlight-layer" aria-hidden="true"></div>
+        <textarea
+          id="editor"
+          class="editor"
+          spellcheck="false"
+          autocomplete="off"
+          autocapitalize="off"
+          placeholder="Start writing, or load the sample text to see the assistant in action."
+          aria-label="Text to analyze"
+        ></textarea>
+      </div>
+      <div class="editor-footer">
+        <div class="counts" id="counts">0 words · 0 characters</div>
+        <div class="status" id="status" role="status" aria-live="polite">Ready</div>
+      </div>
+      <p class="notice hidden" id="degraded-notice"></p>
+    </section>
+
+    <aside class="sidebar" aria-label="Feedback">
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Overview</h2>
+          <span class="badge" id="score-badge">No score</span>
+        </div>
+        <div class="stat-grid" id="stats">
+          <div class="stat"><span>Words</span><strong>0</strong></div>
+          <div class="stat"><span>Sentences</span><strong>0</strong></div>
+          <div class="stat"><span>Reading time</span><strong>0s</strong></div>
+          <div class="stat"><span>Reading ease</span><strong>--</strong></div>
+          <div class="stat"><span>Vocabulary</span><strong>--</strong></div>
+          <div class="stat"><span>Passive voice</span><strong>--</strong></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Issues</h2>
+          <span class="count-pill" id="issue-count">0</span>
+        </div>
+        <div class="filters">
+          <div class="chips" id="type-filters" role="group" aria-label="Filter by issue type">
+            <button type="button" class="chip active" data-type="all" aria-pressed="true">All</button>
+            <button type="button" class="chip" data-type="spelling" aria-pressed="false">Spelling</button>
+            <button type="button" class="chip" data-type="grammar" aria-pressed="false">Grammar</button>
+            <button type="button" class="chip" data-type="punctuation" aria-pressed="false">Punctuation</button>
+            <button type="button" class="chip" data-type="style" aria-pressed="false">Style</button>
+            <button type="button" class="chip" data-type="readability" aria-pressed="false">Readability</button>
+          </div>
+          <label class="severity">
+            <span>Minimum severity</span>
+            <select id="severity-filter">
+              <option value="suggestion">Suggestion</option>
+              <option value="warning" selected>Warning</option>
+              <option value="error">Error</option>
+            </select>
+          </label>
+        </div>
+        <ul class="issue-list" id="issue-list"></ul>
+        <p class="empty" id="empty-state">Write something and issues will appear here.</p>
+      </section>
+    </aside>
+  </main>
+
+  <footer class="footer">
+    <span>Local spaCy pipeline · optional LanguageTool</span>
+    <span id="timing"></span>
+  </footer>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
