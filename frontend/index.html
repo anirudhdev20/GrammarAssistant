@@ -17,6 +17,10 @@
       </div>
     </div>
     <div class="topbar-actions">
+      <label class="switch" for="ghost-toggle" title="Show inline completion suggestions">
+        <input type="checkbox" id="ghost-toggle" checked>
+        <span>Ghost text</span>
+      </label>
       <label class="switch" for="remote-toggle">
         <input type="checkbox" id="remote-toggle" checked>
         <span>Deep check</span>
@@ -43,9 +47,11 @@
           placeholder="Start writing, or load the sample text to see the assistant in action."
           aria-label="Text to analyze"
         ></textarea>
+        <div class="ghost-layer" id="ghost-layer" aria-hidden="true"></div>
       </div>
       <div class="editor-footer">
         <div class="counts" id="counts">0 words · 0 characters</div>
+        <span class="ghost-hint hidden" id="ghost-hint" title="Press Escape to dismiss">Tab to accept</span>
         <div class="status" id="status" role="status" aria-live="polite">Ready</div>
       </div>
       <p class="notice hidden" id="degraded-notice"></p>

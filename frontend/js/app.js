@@ -1,4 +1,5 @@
 import { analyze, exportPdf, importPdf } from "./api.js";
+import { completeText } from "./ghost.js";
 
 const MAX_CHARS = 60000;
 const DEBOUNCE_MS = 550;
@@ -22,6 +23,9 @@ const issueCount = document.getElementById("issue-count");
 const emptyState = document.getElementById("empty-state");
 const timingEl = document.getElementById("timing");
 const degradedNotice = document.getElementById("degraded-notice");
+const ghostLayer = document.getElementById("ghost-layer");
+const ghostHint = document.getElementById("ghost-hint");
+const ghostToggle = document.getElementById("ghost-toggle");
 const remoteToggle = document.getElementById("remote-toggle");
 const sampleButton = document.getElementById("sample-button");
 const uploadPdfButton = document.getElementById("upload-pdf-button");
@@ -42,6 +46,9 @@ const state = {
   timer: null,
   analyzedText: null,
   degraded: [],
+  ghostSuggestion: "",
+  ghostTimer: null,
+  ghostDismissed: false,
 };
 
 function utf16Map(text) {
@@ -67,6 +74,89 @@ function autoGrow() {
   editor.style.height = "auto";
   editor.style.height = `${editor.scrollHeight}px`;
   highlightLayer.style.height = `${editor.scrollHeight}px`;
+}
+
+let ghostMirror = null;
+
+function caretCoordinates(text, position) {
+  if (!ghostMirror) {
+    ghostMirror = document.createElement("div");
+    ghostMirror.className = "ghost-mirror";
+    ghostMirror.setAttribute("aria-hidden", "true");
+    editor.parentElement.append(ghostMirror);
+  }
+  const marker = document.createElement("span");
+  marker.textContent = "\u200b";
+  ghostMirror.style.width = `${editor.clientWidth}px`;
+  ghostMirror.replaceChildren(document.createTextNode(text.slice(0, position)), marker);
+  const editorRect = editor.getBoundingClientRect();
+  const markerRect = marker.getBoundingClientRect();
+  return {
+    left: markerRect.left - editorRect.left - editor.scrollLeft,
+    top: markerRect.top - editorRect.top - editor.scrollTop,
+  };
+}
+
+function hideGhost() {
+  state.ghostSuggestion = "";
+  ghostLayer.replaceChildren();
+  ghostHint.classList.add("hidden");
+}
+
+function positionGhost() {
+  if (!state.ghostSuggestion) return;
+  const span = ghostLayer.querySelector(".ghost-text");
+  if (!span) return;
+  const { left, top } = caretCoordinates(editor.value, editor.selectionStart);
+  span.style.left = `${left}px`;
+  span.style.top = `${top}px`;
+}
+
+function renderGhost() {
+  ghostLayer.replaceChildren();
+  const span = document.createElement("span");
+  span.className = "ghost-text";
+  span.textContent = state.ghostSuggestion;
+  ghostLayer.append(span);
+  positionGhost();
+  ghostHint.classList.remove("hidden");
+}
+
+function updateGhost() {
+  if (!ghostToggle.checked || state.ghostDismissed) return;
+  if (document.activeElement !== editor) return;
+  if (editor.selectionStart !== editor.selectionEnd) return;
+  if (editor.selectionStart !== editor.value.length) return;
+  const suggestion = completeText(editor.value);
+  if (!suggestion) return;
+  state.ghostSuggestion = suggestion;
+  renderGhost();
+}
+
+function scheduleGhost() {
+  clearTimeout(state.ghostTimer);
+  state.ghostTimer = null;
+  hideGhost();
+  if (!ghostToggle.checked || document.activeElement !== editor) return;
+  state.ghostTimer = setTimeout(() => {
+    state.ghostTimer = null;
+    updateGhost();
+  }, 140);
+}
+
+function acceptGhost() {
+  const suggestion = state.ghostSuggestion;
+  if (!suggestion) return;
+  const start = editor.selectionStart;
+  const end = editor.selectionEnd;
+  if (start !== end || start !== editor.value.length) {
+    hideGhost();
+    return;
+  }
+  editor.setRangeText(suggestion, start, end, "end");
+  state.ghostDismissed = false;
+  handleInput(false);
+  scheduleGhost();
 }
 
 function updateCounts() {
@@ -514,6 +604,7 @@ async function runAnalysis(immediate = false) {
 }
 
 function handleInput(immediate = false) {
+  hideGhost();
   updateCounts();
   autoGrow();
   renderHighlights(editor.value);
@@ -524,13 +615,57 @@ function handleInput(immediate = false) {
   }
 }
 
-editor.addEventListener("input", () => handleInput(false));
-editor.addEventListener("scroll", autoGrow);
+editor.addEventListener("input", () => {
+  state.ghostDismissed = false;
+  handleInput(false);
+  scheduleGhost();
+});
+editor.addEventListener("scroll", () => {
+  autoGrow();
+  positionGhost();
+});
+editor.addEventListener("focus", scheduleGhost);
+editor.addEventListener("blur", hideGhost);
+editor.addEventListener("click", scheduleGhost);
 editor.addEventListener("keydown", (event) => {
+  if (
+    event.key === "Tab" &&
+    state.ghostSuggestion &&
+    !event.shiftKey &&
+    !event.ctrlKey &&
+    !event.metaKey &&
+    !event.altKey
+  ) {
+    event.preventDefault();
+    acceptGhost();
+    return;
+  }
+  if (event.key === "Escape" && state.ghostSuggestion) {
+    event.preventDefault();
+    state.ghostDismissed = true;
+    hideGhost();
+    return;
+  }
   if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
     event.preventDefault();
     runAnalysis(true);
   }
+});
+editor.addEventListener("keyup", (event) => {
+  if (["Tab", "Escape"].includes(event.key)) return;
+  if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown"].includes(event.key)) {
+    scheduleGhost();
+  }
+});
+
+ghostToggle.addEventListener("change", () => {
+  if (!ghostToggle.checked) {
+    clearTimeout(state.ghostTimer);
+    state.ghostTimer = null;
+    hideGhost();
+    return;
+  }
+  scheduleGhost();
 });
 
 checkButton.addEventListener("click", () => runAnalysis(true));
@@ -549,7 +684,10 @@ typeFilters.addEventListener("click", (event) => {
   renderAll();
 });
 
-window.addEventListener("resize", autoGrow);
+window.addEventListener("resize", () => {
+  autoGrow();
+  positionGhost();
+});
 
 const params = new URLSearchParams(window.location.search);
 const incoming = params.get("text");

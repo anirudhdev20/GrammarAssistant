@@ -9,6 +9,7 @@ An intelligent grammar and writing assistant with a local-first NLP pipeline and
 - Optional LanguageTool checks for deeper grammar coverage
 - Readability and document statistics: reading ease, grade level, vocabulary diversity, passive ratio, reading time
 - Inline highlights, severity/type filters, apply/ignore actions, and adjustable minimum severity
+- Inline ghost-text completion for words and common phrases, accepted with `Tab`
 - One-click **Fix all** for spelling, grammar, and punctuation suggestions
 - Download the current text as a paginated PDF from the editor or the bookmarklet
 - Upload a text-based PDF and pull its selectable text into the editor for checking
@@ -44,7 +45,8 @@ Key modules:
 | `backend/app/nlp/pipeline.py` | Orchestration, issue merging, filtering, timing |
 | `backend/app/pdf.py` | PDF rendering and text extraction for import/export |
 | `backend/app/routers/` | `/health` and `/api/*` endpoints |
-| `frontend/` | Editor, overlay highlights, stats sidebar, issue actions |
+| `frontend/js/ghost.js` | Local ghost-text completion engine |
+| `frontend/` | Editor, overlay highlights, ghost text, stats sidebar, issue actions |
 | `bookmarklet/` | Shadow-DOM panel source and build script |
 
 ## Requirements
@@ -176,6 +178,7 @@ Invoke-RestMethod -Uri http://127.0.0.1:8000/api/analyze -Method Post -ContentTy
 ## Frontend
 
 - Type or paste text; analysis is debounced and previous requests are aborted.
+- **Ghost text** suggests word completions after two typed letters and common phrase endings such as `in order` → ` to`. Press `Tab` to accept, `Esc` to dismiss, or turn the **Ghost text** switch off.
 - Toggle **Deep check** to include LanguageTool. If the server disables it, a notice explains the fallback.
 - Use the type chips and minimum-severity selector to focus feedback.
 - Apply a suggestion, jump to the span, or ignore an issue.
@@ -231,7 +234,7 @@ backend/
 frontend/
   index.html
   css/styles.css
-  js/api.js, js/app.js
+  js/api.js, js/app.js, js/ghost.js, js/ghost-words.js
 bookmarklet/
   bookmarklet.js, build.ps1, bookmarklet.txt
 docs/
@@ -246,6 +249,7 @@ docs/
 - No authentication or persistence layer.
 - PDFs embed the bundled Vera font; emoji and non-Latin scripts may render as blank glyphs.
 - PDF import relies on the PDF's text layer. Scanned or image-only PDFs need OCR, and password-protected PDFs are rejected.
+- Ghost text is a local prefix/phrase completer backed by a frequency word list and the current document, not a language model; ambiguous prefixes may complete to a common word you did not intend.
 
 ## License
 

@@ -242,6 +242,45 @@ input {
   outline: none;
 }
 
+.ghost-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ghost-text {
+  position: absolute;
+  color: #8a93a0;
+  font-family: var(--font);
+  font-size: 1.02rem;
+  line-height: 1.75;
+  letter-spacing: 0;
+  tab-size: 4;
+  white-space: pre;
+}
+
+.ghost-mirror {
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin: 0;
+  padding: 22px 24px;
+  border: 0;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 1.02rem;
+  line-height: 1.75;
+  letter-spacing: 0;
+  tab-size: 4;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: normal;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .editor::placeholder {
   color: #a3a9b3;
 }
@@ -262,6 +301,13 @@ input {
   padding: 10px 6px 0;
   color: var(--text-muted);
   font-size: 0.82rem;
+}
+
+.ghost-hint {
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
 .status {
@@ -580,13 +626,18 @@ input {
     margin-left: auto;
   }
 
+  .ghost-hint {
+    display: none;
+  }
+
   .editor-shell,
   .editor {
     min-height: 280px;
   }
 
   .highlight-layer,
-  .editor {
+  .editor,
+  .ghost-mirror {
     padding: 16px;
   }
 }
